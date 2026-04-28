@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 WhatsApp Emoji Bot - Auto React</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        header {
+            background: #25D366;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        .input-section {
+            padding: 30px;
+            background: #f8f9fa;
+        }
+        input[type="url"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            transition: border-color 0.3s;
+        }
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #25D366;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover { background: #128C7E; transform: translateY(-2px); }
+        button:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        .status {
+            display: flex;
+            align-items: center;
+            padding: 20px 30px;
+            background: #f0f2f5;
+            font-weight: bold;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 12px;
+        }
+        .status.connecting .status-indicator {
+            background: #ffaa00;
+            animation: pulse 1.5s infinite;
+        }
+        .status.connected .status-indicator { background: #00ff88; }
+        .status.error .status-indicator { background: #ff4444; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .controls { padding: 30px; display: none; }
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .emoji-btn {
+            width: 70px;
+            height: 70px;
+            font-size: 28px;
+            background: white;
+            border: 3px solid #e0e0e0;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .emoji-btn:hover, .emoji-btn.active {
+            border-color: #25D366;
+            background: #e8f5e8;
+            transform: scale(1.1);
+        }
+        label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .logs {
+            height: 300px;
+            overflow-y: auto;
+            background: #1c1e21;
+            color: #00ff88;
+            padding: 20px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+        }
+        .success { color: #00ff88 !important; }
+        .error { color: #ff4444 !important; }
+        .info { color: #4fc3f7 !important; }
+        .qr-container {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            display: none;
+        }
+        #qrCanvas { 
+            border: 2px solid #25D366;
+            border-radius: 12px;
+            max-width: 250px;
+        }
+        @media (max-width: 480px) {
+            .container { margin: 10px; border-radius: 15px; }
+            header h1 { font-size: 1.6em; }
+            .emoji-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 WhatsApp Emoji Bot</h1>
+            <p>Paste link Channel WhatsApp → Auto React!</p>
+        </header>
+
+        <div class="input-section">
+            <input type="url" id="messageUrl" placeholder="https://whatsapp.com/channel/00123456789/1234567890">
+            <button id="connectBtn" onclick="connectBot()">🚀 Connect Bot</button>
+        </div>
+
+        <div class="qr-container" id="qrContainer">
+            <h3>📱 Scan QR Code</h3>
+            <canvas id="qrCanvas"></canvas>
+            <p>Buka WhatsApp → Linked Devices → Link Device</p>
+        </div>
+
+        <div class="status" id="status">
+            <div class="status-indicator" id="statusIndicator"></div>
+            <span id="statusText">Belum terhubung</span>
+        </div>
+
+        <div class="controls" id="controls">
+            <h3>⚙️ Kontrol Bot</h3>
+            <div class="emoji-grid">
+                <button class="emoji-btn" data-emoji="👍" title="Thumbs Up">👍</button>
+                <button class="emoji-btn" data-emoji="❤️" title="Love">❤️</button>
+                <button class="emoji-btn" data-emoji="🔥" title="Fire">🔥</button>
+                <button class="emoji-btn" data-emoji="😂" title="Laugh">😂</button>
+                <button class="emoji-btn" data-emoji="😍" title="Love Eyes">😍</button>
+                <button class="emoji-btn" data-emoji="👏" title="Clap">👏</button>
+            </div>
+            <label>
+                <input type="checkbox" id="autoReact" checked>
+                Auto React Semua Pesan Baru ❤️
+            </label>
+            <button onclick="disconnectBot()" style="margin-top: 20px; background: #ff4444;">❌ Disconnect</button>
+        </div>
+
+        <div class="logs" id="logs"></div>
+    </div>
+
+    <script>
+        let sock = null;
+        let targetChatId = '';
+        let autoReact = true;
+        let qrTimer = null;
+
+        const elements = {
+            connectBtn: document.getElementById('connectBtn'),
+            messageUrl: document.getElementById('messageUrl'),
+            status: document.getElementById('status'),
+            statusText: document.getElementById('statusText'),
+            statusIndicator: document.getElementById('statusIndicator'),
+            controls: document.getElementById('controls'),
+            qrContainer: document.getElementById('qrContainer'),
+            qrCanvas: document.getElementById('qrCanvas'),
+            logs: document.getElementById('logs'),
+            autoReact: document.getElementById('autoReact')
+        };
+
+        function addLog(msg, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            elements.logs.appendChild(entry);
+            elements.logs.scrollTop = elements.logs.scrollHeight;
+        }
+
+        function updateStatus(state, text) {
+            elements.status.className = `status ${state}`;
+            elements.statusText.textContent = text;
+        }
+
+        function showQR(qr) {
+            elements.qrContainer.style.display = 'block';
+            const canvas = elements.qrCanvas;
+            const ctx = canvas.getContext('2d');
+            
+            // Simple QR render (base64)
+            const img = new Image();
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = `data:image/png;base64,${btoa(qr)}`;
+        }
+
+        async function connectBot() {
+            const url = elements.messageUrl.value.trim();
+            if (!url) return alert('Masukkan link WhatsApp Channel!');
+
+            targetChatId = extractChatId(url);
+            if (!targetChatId) return alert('Link WhatsApp tidak valid!');
+
+            addLog(`🎯 Target: ${targetChatId.slice(0,20)}...`, 'info');
+            updateStatus('connecting', 'Menghubungkan...');
+            elements.connectBtn.disabled = true;
+            elements.connectBtn.textContent = 'Connecting...';
+
+            try {
+                const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = await import('https://cdn.skypack.dev/@whiskeysockets/baileys@6.5.1');
+                const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+
+                sock = makeWASocket({
+                    auth: state,
+                    printQRInTerminal: false,
+                    browser: ['EmojiBot', 'Chrome', '1.0.0']
+                });
+
+                sock.ev.on('creds.update', saveCreds);
+
+                sock.ev.on('connection.update', (update) => {
+                    const { connection, lastDisconnect, qr } = update;
+                    
+                    if (qr) {
+                        showQR(qr);
+                        updateStatus('connecting', 'Scan QR Code...');
+                        addLog('📱 Scan QR di WhatsApp kamu!', 'info');
+                    }
+                    
+                    if (connection === 'close') {
+                        const reason = lastDisconnect?.error?.output?.statusCode;
+                        addLog(`❌ Disconnect: ${DisconnectReason[reason] || reason}`, 'error');
+                        if (reason !== DisconnectReason.loggedOut) {
+                            setTimeout(connectBot, 3000);
+                        } else {
+                            resetUI();
+                        }
+                    }
+                    
+                    if (connection === 'open') {
+                        elements.qrContainer.style.display = 'none';
+                        updateStatus('connected', '✅ Bot Aktif!');
+                        elements.controls.style.display = 'block';
+                        addLog('🎉 WhatsApp Bot Terhubung!', 'success');
+                        startMessageListener();
+                    }
+                });
+
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+                updateStatus('error', '❌ Gagal connect');
+                resetUI();
+            }
+        }
+
+        function extractChatId(url) {
+            // WhatsApp Channel pattern
+            const match = url.match(/\/channel\/(\d+)\/(\d+)/);
+            return match ? `${match[1]}@${match[2]}c.us` : null;
+        }
+
+        function startMessageListener() {
+            sock.ev.on('messages.upsert', async ({ messages }) => {
+                for (const msg of messages) {
+                    if (!msg.key.fromMe && msg.key.remoteJid === targetChatId && msg.message) {
+                        addLog(`💬 Pesan baru detected!`, 'info');
+                        if (autoReact) {
+                            await sock.sendMessage(msg.key.remoteJid, {
+                                react: { text: '❤️', key: msg.key }
+                            });
+                            addLog('✅ Auto ❤️ reaction sent!', 'success');
+                        }
+                    }
+                }
+            });
+        }
+
+        async function reactToMessage(emoji) {
+            if (!sock || !targetChatId) return;
+            try {
+                // React to latest message (simplified)
+                await sock.sendMessage(targetChatId, {
+                    react: { text: emoji, key: { remoteJid: targetChatId, id: '0' } }
+                });
+                addLog(`✅ ${emoji} reaction sent!`, 'success');
+            } catch (e) {
+                addLog(`❌ React failed: ${e.message}`, 'error');
+            }
+        }
+
+        function resetUI() {
+            elements.connectBtn.disabled = false;
+            elements.connectBtn.textContent = '🚀 Connect Bot';
+            elements.controls.style.display = 'none';
+            elements.qrContainer.style.display = 'none';
+            updateStatus('error', 'Disconnected');
+        }
+
+        function disconnectBot() {
+            if (sock) sock.end();
+            resetUI();
+            addLog('🔌 Bot disconnected', 'info');
+        }
+
+        // Event Listeners
+        document.querySelectorAll('.emoji-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                const emoji = e.target.dataset.emoji;
+                document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                reactToMessage(emoji);
+            };
+        });
+
+        elements.autoReact.onchange = (e) => {
+            autoReact = e.target.checked;
+            addLog(`Auto react: ${autoReact ? 'ON' : 'OFF'}`, 'info');
+        };
+
+        elements.messageUrl.onkeypress = (e) => {
+            if (e.key === 'Enter') connectBot();
+        };
+
+        // Auto focus
+        elements.messageUrl.focus();
+    </script>
+</body>
+</html>
